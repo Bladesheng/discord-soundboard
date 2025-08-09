@@ -8,8 +8,7 @@ namespace Bot;
 
 public class SoundService
 {
-    private readonly ConcurrentDictionary<ulong, (ulong channelId, VoiceClient voiceClient)>
-        _voiceClients = new();
+    private readonly ConcurrentDictionary<ulong, VoiceConnection> _voiceConnections = new();
 
     private readonly ConcurrentDictionary<ulong, SemaphoreSlim> _guildSemaphores = new();
 
@@ -23,8 +22,8 @@ public class SoundService
         ("stfu", "sounds/stfu.mp3")
     ];
 
-
     public IReadOnlyList<(string name, string path)> AvailableSounds => _sounds.AsReadOnly();
+
 
     public async Task PlaySoundAsync(GatewayClient client, Guild guild, ulong userId,
         string trackPath)
@@ -40,11 +39,10 @@ public class SoundService
 
         await JoinChannel(client, guild.Id, channelId);
 
-        var voiceClient = GetVoiceClient(guild.Id);
-        if (voiceClient == null)
-            throw new InvalidOperationException("Failed to get voice client for the server.");
+        if (!_voiceConnections.TryGetValue(guild.Id, out var voiceConnection))
+            throw new InvalidOperationException("Failed to get voice connection for the server.");
 
-        await PlayAudioFileAsync(voiceClient, trackPath);
+        await PlayAudioFileAsync(voiceConnection, trackPath);
     }
 
 
@@ -59,10 +57,10 @@ public class SoundService
         await semaphore.WaitAsync();
         try
         {
-            var voiceClientInfo = _voiceClients.GetValueOrDefault(guildId);
+            var voiceConnection = _voiceConnections.GetValueOrDefault(guildId);
 
             // Check if the bot is already connected to the voice channel.
-            if (voiceClientInfo.channelId != channelId)
+            if (voiceConnection?.ChannelId != channelId)
             {
                 var voiceClient = await client.JoinVoiceChannelAsync(
                     guildId,
@@ -79,7 +77,23 @@ public class SoundService
                     new SpeakingProperties(SpeakingFlags.Microphone)
                 );
 
-                _voiceClients[guildId] = (channelId, voiceClient);
+                // Create a stream that sends voice to Discord.
+                var outStream = voiceClient.CreateOutputStream();
+
+                // We create this stream to automatically convert the PCM data returned by FFmpeg to Opus data.
+                // The Opus data is then written to 'outStream' that sends the data to Discord.
+                OpusEncodeStream opusEncodeStream = new(
+                    outStream,
+                    PcmFormat.Short,
+                    VoiceChannels.Stereo,
+                    OpusApplication.Audio
+                );
+
+                _voiceConnections[guildId] = new VoiceConnection(
+                    voiceClient,
+                    channelId,
+                    opusEncodeStream
+                );
             }
         }
         finally
@@ -88,27 +102,9 @@ public class SoundService
         }
     }
 
-    private VoiceClient? GetVoiceClient(ulong guildId)
+
+    private async Task PlayAudioFileAsync(VoiceConnection voiceConnection, string filePath)
     {
-        if (!_voiceClients.TryGetValue(guildId, out var voiceClientInfo))
-            return null;
-
-        return voiceClientInfo.voiceClient;
-    }
-
-    private async Task PlayAudioFileAsync(VoiceClient voiceClient, string filePath)
-    {
-        // Create a stream that sends voice to Discord.
-        var outStream = voiceClient.CreateOutputStream();
-
-        // We create this stream to automatically convert the PCM data returned by FFmpeg to Opus data.
-        // The Opus data is then written to 'outStream' that sends the data to Discord.
-        OpusEncodeStream stream = new(outStream,
-            PcmFormat.Short,
-            VoiceChannels.Stereo,
-            OpusApplication.Audio
-        );
-
         ProcessStartInfo startInfo = new("ffmpeg")
         {
             RedirectStandardOutput = true
@@ -140,29 +136,28 @@ public class SoundService
 
         Console.WriteLine("Starting ffmpeg");
 
-        var ffmpeg = Process.Start(startInfo);
+        using var ffmpeg = Process.Start(startInfo);
         if (ffmpeg == null)
             throw new InvalidOperationException("Failed to start FFmpeg process");
 
-        await ffmpeg.StandardOutput.BaseStream.CopyToAsync(stream);
+        await ffmpeg.StandardOutput.BaseStream.CopyToAsync(voiceConnection.OutputStream);
 
         await ffmpeg.WaitForExitAsync();
 
         Console.WriteLine("FFmpeg done");
 
-        await stream.FlushAsync();
+        await voiceConnection.OutputStream.FlushAsync();
 
-        await stream.DisposeAsync();
-        ffmpeg.Dispose();
-        await outStream.DisposeAsync();
+        Console.WriteLine("Flushed");
     }
+
 
     public async Task DisposeVoiceClientAsync(ulong guildId)
     {
         // todo do this in semaphore maybe
 
-        if (_voiceClients.TryRemove(guildId, out var voiceClientInfo))
-            voiceClientInfo.voiceClient.Dispose();
+        if (_voiceConnections.TryRemove(guildId, out var voiceConnection))
+            await voiceConnection.DisposeAsync();
 
         _guildSemaphores.TryRemove(guildId, out _);
     }
