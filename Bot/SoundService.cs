@@ -10,7 +10,7 @@ public class SoundService
 {
     private readonly ConcurrentDictionary<ulong, VoiceConnection> _voiceConnections = new();
 
-    private readonly ConcurrentDictionary<ulong, SemaphoreSlim> _guildSemaphores = new();
+    private readonly ConcurrentDictionary<ulong, AsyncLock> _guildLocks = new();
 
     private readonly List<(string name, string path)> _sounds =
     [
@@ -28,8 +28,10 @@ public class SoundService
     public async Task PlaySoundAsync(GatewayClient client, Guild guild, ulong userId,
         string trackPath)
     {
-        // Check if user is in voice channel.
+        using var l =
+            await _guildLocks.GetOrAdd(guild.Id, _ => new AsyncLock()).AcquireAsync();
 
+        // Check if user is in voice channel.
         if (!guild.VoiceStates.TryGetValue(userId, out var voiceState))
             return;
 
@@ -52,54 +54,44 @@ public class SoundService
         ulong channelId
     )
     {
-        // Joining channel is not thread safe - use per-guild lock.
-        var semaphore = _guildSemaphores.GetOrAdd(guildId, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync();
-        try
-        {
-            var voiceConnection = _voiceConnections.GetValueOrDefault(guildId);
+        var voiceConnection = _voiceConnections.GetValueOrDefault(guildId);
+        if (voiceConnection?.ChannelId == channelId)
+            // Bot is already connected to the voice channel.
+            return;
 
-            // Check if the bot is already connected to the voice channel.
-            if (voiceConnection?.ChannelId != channelId)
+
+        var voiceClient = await client.JoinVoiceChannelAsync(
+            guildId,
+            channelId,
+            new VoiceClientConfiguration
             {
-                var voiceClient = await client.JoinVoiceChannelAsync(
-                    guildId,
-                    channelId,
-                    new VoiceClientConfiguration
-                    {
-                        Logger = new ConsoleLogger()
-                    }
-                );
-                await voiceClient.StartAsync();
-
-                // Enter speaking state, to be able to send voice.
-                await voiceClient.EnterSpeakingStateAsync(
-                    new SpeakingProperties(SpeakingFlags.Microphone)
-                );
-
-                // Create a stream that sends voice to Discord.
-                var outStream = voiceClient.CreateOutputStream();
-
-                // We create this stream to automatically convert the PCM data returned by FFmpeg to Opus data.
-                // The Opus data is then written to 'outStream' that sends the data to Discord.
-                OpusEncodeStream opusEncodeStream = new(
-                    outStream,
-                    PcmFormat.Short,
-                    VoiceChannels.Stereo,
-                    OpusApplication.Audio
-                );
-
-                _voiceConnections[guildId] = new VoiceConnection(
-                    voiceClient,
-                    channelId,
-                    opusEncodeStream
-                );
+                Logger = new ConsoleLogger()
             }
-        }
-        finally
-        {
-            semaphore.Release();
-        }
+        );
+        await voiceClient.StartAsync();
+
+        // Enter speaking state, to be able to send voice.
+        await voiceClient.EnterSpeakingStateAsync(
+            new SpeakingProperties(SpeakingFlags.Microphone)
+        );
+
+        // Create a stream that sends voice to Discord.
+        var outStream = voiceClient.CreateOutputStream();
+
+        // We create this stream to automatically convert the PCM data returned by FFmpeg to Opus data.
+        // The Opus data is then written to 'outStream' that sends the data to Discord.
+        OpusEncodeStream opusEncodeStream = new(
+            outStream,
+            PcmFormat.Short,
+            VoiceChannels.Stereo,
+            OpusApplication.Audio
+        );
+
+        _voiceConnections[guildId] = new VoiceConnection(
+            voiceClient,
+            channelId,
+            opusEncodeStream
+        );
     }
 
 
@@ -154,11 +146,9 @@ public class SoundService
 
     public async Task DisposeVoiceClientAsync(ulong guildId)
     {
-        // todo do this in semaphore maybe
-
         if (_voiceConnections.TryRemove(guildId, out var voiceConnection))
             await voiceConnection.DisposeAsync();
 
-        _guildSemaphores.TryRemove(guildId, out _);
+        _guildLocks.TryRemove(guildId, out _);
     }
 }
