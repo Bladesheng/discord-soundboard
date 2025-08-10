@@ -25,8 +25,7 @@ public class CommandModule(SoundService soundService)
         return "File uploaded";
     }
 
-
-    [SlashCommand("btn", "Renders all the buttons!")]
+    [SlashCommand("soundboard", "Displays the soundboard buttons.")]
     public async Task Button()
     {
         var rows = soundService.AvailableSounds
