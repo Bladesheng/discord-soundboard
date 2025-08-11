@@ -12,18 +12,6 @@ public class SoundService
 
     private readonly ConcurrentDictionary<ulong, AsyncLock> _guildLocks = new();
 
-    private readonly List<(string name, string path)> _sounds =
-    [
-        ("neslo nic", "sounds/neslo.mp3"),
-        ("bombastic", "sounds/bombastic.mp3"),
-        ("dejavu", "sounds/dejavu.mp3"),
-        ("faking healer", "sounds/healer.mp3"),
-        ("neboli", "sounds/neboli.mp3"),
-        ("stfu", "sounds/stfu.mp3")
-    ];
-
-    public IReadOnlyList<(string name, string path)> AvailableSounds => _sounds.AsReadOnly();
-
 
     public async Task PlaySoundAsync(GatewayClient client, Guild guild, ulong userId,
         string trackPath)

@@ -1,3 +1,6 @@
+using Bot.Data;
+using Bot.Models;
+using Microsoft.EntityFrameworkCore;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
@@ -5,7 +8,7 @@ using NetCord.Services.ApplicationCommands;
 
 namespace Bot;
 
-public class CommandModule(SoundService soundService)
+public class CommandModule(SoundService soundService, SoundboardDbContext dbContext)
     : ApplicationCommandModule<ApplicationCommandContext>
 {
     [SlashCommand("new", "Creates a new sound effect.")]
@@ -47,8 +50,23 @@ public class CommandModule(SoundService soundService)
             return;
         }
 
-        // todo check if name already exists
-        // todo check max number of sounds
+        if (await dbContext.Sounds.CountAsync() > 25)
+        {
+            await ModifyResponseAsync(msg =>
+                msg.Content = "❌ Error: Maximum number of sounds reached (25)"
+            );
+            return;
+        }
+
+        var nameExists = await dbContext.Sounds.AnyAsync(s => s.Name == name);
+        if (nameExists)
+        {
+            await ModifyResponseAsync(msg =>
+                msg.Content = $"❌ Error: Sound with the name `{name}` already exists."
+            );
+            return;
+        }
+
 
         try
         {
@@ -62,8 +80,13 @@ public class CommandModule(SoundService soundService)
             await using FileStream fileStream = new(filePath, FileMode.Create);
             await response.Content.CopyToAsync(fileStream);
 
-            // todo save to db
-            Console.WriteLine(name);
+            dbContext.Sounds.Add(new Sound
+            {
+                Name = name,
+                FilePath = filePath,
+                FileSizeBytes = sound.Size
+            });
+            await dbContext.SaveChangesAsync();
         }
         catch (Exception ex)
         {
@@ -84,14 +107,14 @@ public class CommandModule(SoundService soundService)
     [SlashCommand("sound", "Displays soundboard buttons.")]
     public async Task Button()
     {
-        var rows = soundService.AvailableSounds
+        var rows = (await dbContext.Sounds.ToListAsync())
             // Discord allows only 5 buttons per row.
             .Chunk(5)
             .Select(soundChunk => new ActionRowProperties
             {
                 Buttons = soundChunk.Select(sound => new ButtonProperties(
-                    $"soundButton:{sound.path}",
-                    sound.name,
+                    $"soundButton:{sound.FilePath}",
+                    sound.Name,
                     // EmojiProperties.Standard("👋"),
                     ButtonStyle.Primary
                 )).ToArray()

@@ -1,4 +1,7 @@
 ﻿using Bot;
+using Bot.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetCord;
@@ -10,7 +13,13 @@ using NetCord.Services.ComponentInteractions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+var connectionString = builder.Configuration.GetConnectionString("DbPath") ??
+                       throw new InvalidOperationException("`DbPath` connection string not found");
+
 builder.Services
+    .AddDbContext<SoundboardDbContext>(options =>
+        options.UseSqlite(connectionString)
+    )
     .AddDiscordGateway()
     .AddGatewayHandlers(typeof(Program).Assembly)
     .AddComponentInteractions<ButtonInteraction, ButtonInteractionContext>()
