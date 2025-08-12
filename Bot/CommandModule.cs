@@ -15,7 +15,7 @@ public class CommandModule(SoundService soundService, SoundboardDbContext dbCont
     public async Task Upload(
         [SlashCommandParameter(Description = "Name of the sound effect")]
         string name,
-        [SlashCommandParameter(Description = ".mp3 file")]
+        [SlashCommandParameter(Description = ".mp3 file (max 1 MB)")]
         Attachment sound
     )
     {
