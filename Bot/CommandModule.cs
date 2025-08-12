@@ -104,6 +104,41 @@ public class CommandModule(SoundService soundService, SoundboardDbContext dbCont
     }
 
 
+    [SlashCommand("delete", "Deletes the sound effect.")]
+    public async Task Delete(
+        [SlashCommandParameter(
+            Description = "Name of the sound effect",
+            AutocompleteProviderType = typeof(SoundNameAutocomplete)
+        )]
+        string name
+    )
+    {
+        var sound = await dbContext.Sounds
+            .Where(s => s.Name == name)
+            .FirstOrDefaultAsync();
+
+        if (sound == null)
+        {
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content = $"❌ Error: Sound with name `{name}` not found."
+            });
+            return;
+        }
+
+        if (File.Exists(sound.FilePath))
+            File.Delete(sound.FilePath);
+
+        dbContext.Sounds.Remove(sound);
+        await dbContext.SaveChangesAsync();
+
+        await RespondEphemeralAsync(new InteractionMessageProperties
+        {
+            Content = $"✅ Sound `{name}` deleted successfully."
+        });
+    }
+
+
     [SlashCommand("sound", "Displays soundboard buttons.")]
     public async Task Button()
     {
@@ -132,5 +167,32 @@ public class CommandModule(SoundService soundService, SoundboardDbContext dbCont
     {
         messageProperties.Flags = MessageFlags.Ephemeral;
         await RespondAsync(InteractionCallback.Message(messageProperties));
+    }
+}
+
+internal class SoundNameAutocomplete(SoundboardDbContext dbContext)
+    : IAutocompleteProvider<AutocompleteInteractionContext>
+{
+    public async ValueTask<IEnumerable<ApplicationCommandOptionChoiceProperties>?> GetChoicesAsync(
+        ApplicationCommandInteractionDataOption option,
+        AutocompleteInteractionContext context
+    )
+    {
+        var searchQuery = option.Value ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(searchQuery))
+            return await dbContext.Sounds
+                // Discord limits choices to 25.
+                .Take(25)
+                .Select(s => new ApplicationCommandOptionChoiceProperties(s.Name, s.Name))
+                .ToListAsync();
+
+        var fuzzyPattern = "%" + string.Join("%", searchQuery.ToCharArray()) + "%";
+
+        return await dbContext.Sounds
+            .Where(s => EF.Functions.Like(s.Name.ToLower(), fuzzyPattern))
+            .Take(25)
+            .Select(s => new ApplicationCommandOptionChoiceProperties(s.Name, s.Name))
+            .ToListAsync();
     }
 }
