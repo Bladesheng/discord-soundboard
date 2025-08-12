@@ -1,8 +1,9 @@
+using Bot.Voice;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ComponentInteractions;
 
-namespace Bot;
+namespace Bot.Modules;
 
 public class ButtonModule(SoundService soundService)
     : ComponentInteractionModule<ButtonInteractionContext>

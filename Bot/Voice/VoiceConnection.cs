@@ -1,6 +1,6 @@
 using NetCord.Gateway.Voice;
 
-namespace Bot;
+namespace Bot.Voice;
 
 public class VoiceConnection(
     VoiceClient voiceClient,

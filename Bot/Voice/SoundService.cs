@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Bot.Utils;
 using NetCord.Gateway;
 using NetCord.Gateway.Voice;
 using NetCord.Logging;
 
-namespace Bot;
+namespace Bot.Voice;
 
 public class SoundService
 {

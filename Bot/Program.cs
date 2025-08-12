@@ -1,5 +1,6 @@
 ﻿using Bot;
 using Bot.Data;
+using Bot.Voice;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,12 +1,12 @@
 using Bot.Data;
+using Bot.Voice;
 using Bot.Models;
 using Microsoft.EntityFrameworkCore;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
 
-
-namespace Bot;
+namespace Bot.Modules;
 
 public class CommandModule(SoundService soundService, SoundboardDbContext dbContext)
     : ApplicationCommandModule<ApplicationCommandContext>

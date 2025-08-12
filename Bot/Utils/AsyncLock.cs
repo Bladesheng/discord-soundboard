@@ -1,4 +1,4 @@
-namespace Bot;
+namespace Bot.Utils;
 
 public class AsyncLock
 {

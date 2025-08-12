@@ -1,7 +1,7 @@
 using NetCord.Gateway;
 using NetCord.Hosting.Gateway;
 
-namespace Bot;
+namespace Bot.Voice;
 
 public class VoiceDisconnectHandler(GatewayClient client, SoundService soundService)
     : IVoiceStateUpdateGatewayHandler
