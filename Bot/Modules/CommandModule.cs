@@ -49,10 +49,10 @@ public class CommandModule(SoundboardDbContext dbContext)
             return;
         }
 
-        if (await dbContext.Sounds.CountAsync() > 25)
+        if (await dbContext.Sounds.CountAsync() > 100)
         {
             await ModifyResponseAsync(msg =>
-                msg.Content = "❌ Error: Maximum number of sounds reached (25)"
+                msg.Content = "❌ Error: Maximum number of sounds reached (100)"
             );
             return;
         }
