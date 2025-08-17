@@ -75,7 +75,7 @@ public class CommandModule(SoundboardDbContext dbContext)
 
             var soundsDirectory = Path.Combine("/var", "lib", "DiscordSoundboard", "sounds");
             Directory.CreateDirectory(soundsDirectory);
-            var filePath = Path.Combine(soundsDirectory, sound.FileName);
+            var filePath = Path.Combine(soundsDirectory, $"{Guid.NewGuid()}_{sound.FileName}");
             await using FileStream fileStream = new(filePath, FileMode.Create);
             await response.Content.CopyToAsync(fileStream);
 
