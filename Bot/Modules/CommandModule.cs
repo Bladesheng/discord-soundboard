@@ -22,6 +22,16 @@ public class CommandModule(SoundboardDbContext dbContext)
             InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
         );
 
+        // Discord allows only 80 characters inside a button.
+        if (name.Length > 80)
+        {
+            await ModifyResponseAsync(msg =>
+                msg.Content =
+                    $"❌ Error: Sound name is too long: `{name.Length}` characters. Maximum length `80` characters."
+            );
+            return;
+        }
+
         if (sound.Size > 1_000_000)
         {
             await ModifyResponseAsync(msg =>
@@ -116,6 +126,17 @@ public class CommandModule(SoundboardDbContext dbContext)
         string newName
     )
     {
+        // Discord allows only 80 characters inside a button.
+        if (newName.Length > 80)
+        {
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content =
+                    $"❌ Error: Sound name is too long: `{newName.Length}` characters. Maximum length `80` characters."
+            });
+            return;
+        }
+
         var sound = await dbContext.Sounds
             .Where(s => s.Name == oldName)
             .FirstOrDefaultAsync();
