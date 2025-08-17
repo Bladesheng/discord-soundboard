@@ -199,9 +199,9 @@ public class CommandModule(SoundboardDbContext dbContext)
         // and each row can have up to 5 buttons.
         var messagesRows = (await dbContext.Sounds.ToListAsync())
             .Chunk(5)
-            .Select(soundChunk => new ActionRowProperties
+            .Select(soundsChunk => new ActionRowProperties
             {
-                Buttons = soundChunk.Select(sound => new ButtonProperties(
+                Buttons = soundsChunk.Select(sound => new ButtonProperties(
                     $"soundButton:{sound.FilePath}",
                     sound.Name,
                     // EmojiProperties.Standard("👋"),
@@ -215,6 +215,30 @@ public class CommandModule(SoundboardDbContext dbContext)
             {
                 Flags = MessageFlags.Ephemeral,
                 Components = messageRows
+            });
+    }
+
+
+    [SlashCommand("download", "Download all the sound effects.")]
+    public async Task Download()
+    {
+        await RespondAsync(
+            InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
+        );
+
+        var messagesAttachments = (await dbContext.Sounds.ToListAsync())
+            .Select(sound => new AttachmentProperties(
+                Path.GetFileName(sound.FilePath),
+                File.OpenRead(sound.FilePath))
+            )
+            // Discord allows sending up to 10 files per message.
+            .Chunk(10);
+
+        foreach (var messageAttachments in messagesAttachments)
+            await Context.Interaction.SendFollowupMessageAsync(new InteractionMessageProperties
+            {
+                Flags = MessageFlags.Ephemeral,
+                Attachments = messageAttachments
             });
     }
 
