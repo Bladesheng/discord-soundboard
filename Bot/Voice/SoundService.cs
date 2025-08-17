@@ -14,8 +14,12 @@ public class SoundService
     private readonly ConcurrentDictionary<ulong, AsyncLock> _guildLocks = new();
 
 
-    public async Task PlaySoundAsync(GatewayClient client, Guild guild, ulong userId,
-        string trackPath)
+    public async Task PlaySoundAsync(
+        GatewayClient client,
+        Guild guild,
+        ulong userId,
+        string filePath
+    )
     {
         using var l =
             await _guildLocks.GetOrAdd(guild.Id, _ => new AsyncLock()).AcquireAsync();
@@ -33,7 +37,7 @@ public class SoundService
         if (!_voiceConnections.TryGetValue(guild.Id, out var voiceConnection))
             throw new InvalidOperationException("Failed to get voice connection for the server.");
 
-        await PlayAudioFileAsync(voiceConnection, trackPath);
+        await PlayAudioFileAsync(voiceConnection, filePath);
     }
 
 

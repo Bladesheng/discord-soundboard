@@ -209,8 +209,8 @@ public class CommandModule(SoundboardDbContext dbContext)
     }
 
 
-    [SlashCommand("sound", "Displays soundboard buttons.")]
-    public async Task Button()
+    [SlashCommand("sound", "Displays all soundboard buttons.")]
+    public async Task Sound()
     {
         await RespondAsync(
             InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
@@ -223,7 +223,7 @@ public class CommandModule(SoundboardDbContext dbContext)
             .Select(soundsChunk => new ActionRowProperties
             {
                 Buttons = soundsChunk.Select(sound => new ButtonProperties(
-                    $"soundButton:{sound.FilePath}",
+                    $"soundButton:{sound.Id}",
                     sound.Name,
                     // EmojiProperties.Standard("👋"),
                     ButtonStyle.Primary
