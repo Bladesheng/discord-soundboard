@@ -1,5 +1,4 @@
 using Bot.Data;
-using Bot.Voice;
 using Bot.Models;
 using Microsoft.EntityFrameworkCore;
 using NetCord;
@@ -8,7 +7,7 @@ using NetCord.Services.ApplicationCommands;
 
 namespace Bot.Modules;
 
-public class CommandModule(SoundService soundService, SoundboardDbContext dbContext)
+public class CommandModule(SoundboardDbContext dbContext)
     : ApplicationCommandModule<ApplicationCommandContext>
 {
     [SlashCommand("new", "Creates a new sound effect.")]
@@ -142,8 +141,13 @@ public class CommandModule(SoundService soundService, SoundboardDbContext dbCont
     [SlashCommand("sound", "Displays soundboard buttons.")]
     public async Task Button()
     {
-        var rows = (await dbContext.Sounds.ToListAsync())
-            // Discord allows only 5 buttons per row.
+        await RespondAsync(
+            InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
+        );
+
+        // Discord allows sending up to 5 rows (components) per message,
+        // and each row can have up to 5 buttons.
+        var messagesRows = (await dbContext.Sounds.ToListAsync())
             .Chunk(5)
             .Select(soundChunk => new ActionRowProperties
             {
@@ -153,13 +157,15 @@ public class CommandModule(SoundService soundService, SoundboardDbContext dbCont
                     // EmojiProperties.Standard("👋"),
                     ButtonStyle.Primary
                 )).ToArray()
-            });
+            })
+            .Chunk(5);
 
-        await RespondEphemeralAsync(new InteractionMessageProperties
-        {
-            Content = "Soundboard:",
-            Components = rows
-        });
+        foreach (var messageRows in messagesRows)
+            await Context.Interaction.SendFollowupMessageAsync(new InteractionMessageProperties
+            {
+                Flags = MessageFlags.Ephemeral,
+                Components = messageRows
+            });
     }
 
 
