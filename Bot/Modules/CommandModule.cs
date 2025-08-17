@@ -103,6 +103,56 @@ public class CommandModule(SoundboardDbContext dbContext)
     }
 
 
+    [SlashCommand("rename", "Renames the sound effect.")]
+    public async Task Rename(
+        [SlashCommandParameter(
+            Description = "Name of existing sound effect to be renamed",
+            AutocompleteProviderType = typeof(SoundNameAutocomplete)
+        )]
+        string oldName,
+        [SlashCommandParameter(
+            Description = "New name of the sound effect"
+        )]
+        string newName
+    )
+    {
+        var sound = await dbContext.Sounds
+            .Where(s => s.Name == oldName)
+            .FirstOrDefaultAsync();
+
+        if (sound == null)
+        {
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content = $"❌ Error: Sound with name `{oldName}` not found."
+            });
+            return;
+        }
+
+        var soundWithNewName = await dbContext.Sounds
+            .Where(s => s.Name == newName)
+            .FirstOrDefaultAsync();
+
+        if (soundWithNewName != null)
+        {
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content = $"❌ Error: Sound with name `{newName}` already exists."
+            });
+            return;
+        }
+
+
+        sound.Name = newName;
+        await dbContext.SaveChangesAsync();
+
+        await RespondEphemeralAsync(new InteractionMessageProperties
+        {
+            Content = $"✅ Sound `{oldName}` renamed to `{newName}` successfully."
+        });
+    }
+
+
     [SlashCommand("delete", "Deletes the sound effect.")]
     public async Task Delete(
         [SlashCommandParameter(
