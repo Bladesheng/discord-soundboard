@@ -1,5 +1,4 @@
-﻿using Bot;
-using Bot.Data;
+﻿using Bot.Data;
 using Bot.Voice;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,11 +10,15 @@ using NetCord.Hosting.Services;
 using NetCord.Hosting.Services.ApplicationCommands;
 using NetCord.Hosting.Services.ComponentInteractions;
 using NetCord.Services.ComponentInteractions;
+using Microsoft.Extensions.Logging;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DbPath") ??
                        throw new InvalidOperationException("`DbPath` connection string not found");
+
+builder.Logging
+    .AddConsole();
 
 builder.Services
     .AddDbContext<SoundboardDbContext>(options =>

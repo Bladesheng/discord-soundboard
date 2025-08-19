@@ -19,6 +19,8 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8"/>
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.8" />
         <PackageReference Include="NetCord" Version="1.0.0-alpha.410"/>
         <PackageReference Include="NetCord.Hosting" Version="1.0.0-alpha.410"/>
         <PackageReference Include="NetCord.Hosting.Services" Version="1.0.0-alpha.410"/>

@@ -1,13 +1,14 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Bot.Utils;
+using Microsoft.Extensions.Logging;
 using NetCord.Gateway;
 using NetCord.Gateway.Voice;
 using NetCord.Logging;
 
 namespace Bot.Voice;
 
-public class SoundService
+public class SoundService(ILogger<SoundService> logger)
 {
     private readonly ConcurrentDictionary<ulong, VoiceConnection> _voiceConnections = new();
 
@@ -21,16 +22,26 @@ public class SoundService
         string filePath
     )
     {
+        logger.LogInformation("Queuing sound {sound}.", filePath);
+
         using var l =
             await _guildLocks.GetOrAdd(guild.Id, _ => new AsyncLock()).AcquireAsync();
 
+        logger.LogInformation("Playing sound {sound}.", filePath);
+
         // Check if user is in voice channel.
         if (!guild.VoiceStates.TryGetValue(userId, out var voiceState))
+        {
+            logger.LogError("Could not get user {user} voice state.", userId);
             return;
+        }
 
         var channelId = voiceState.ChannelId.GetValueOrDefault();
         if (channelId == 0)
+        {
+            logger.LogError("Could not get channel ID.");
             return;
+        }
 
         await JoinChannel(client, guild.Id, channelId);
 
@@ -38,6 +49,8 @@ public class SoundService
             throw new InvalidOperationException("Failed to get voice connection for the server.");
 
         await PlayAudioFileAsync(voiceConnection, filePath);
+
+        logger.LogInformation("Done playing sound {sound}", filePath);
     }
 
 
@@ -49,9 +62,12 @@ public class SoundService
     {
         var voiceConnection = _voiceConnections.GetValueOrDefault(guildId);
         if (voiceConnection?.ChannelId == channelId)
-            // Bot is already connected to the voice channel.
+        {
+            logger.LogDebug("Bot is already connected to the voice channel {channel}.", channelId);
             return;
+        }
 
+        logger.LogInformation("Joining voice channel {channel}.", channelId);
 
         var voiceClient = await client.JoinVoiceChannelAsync(
             guildId,
@@ -85,6 +101,8 @@ public class SoundService
             channelId,
             opusEncodeStream
         );
+
+        logger.LogInformation("Joined voice channel {channel}.", channelId);
     }
 
 
@@ -119,7 +137,6 @@ public class SoundService
         // Direct the output to stdout.
         arguments.Add("pipe:1");
 
-        Console.WriteLine("Starting ffmpeg");
 
         using var ffmpeg = Process.Start(startInfo);
         if (ffmpeg == null)
@@ -129,11 +146,7 @@ public class SoundService
 
         await ffmpeg.WaitForExitAsync();
 
-        Console.WriteLine("FFmpeg done");
-
         await voiceConnection.OutputStream.FlushAsync();
-
-        Console.WriteLine("Flushed");
     }
 
 
@@ -143,5 +156,7 @@ public class SoundService
             await voiceConnection.DisposeAsync();
 
         _guildLocks.TryRemove(guildId, out _);
+
+        logger.LogInformation("Disposed voice client for guild {guildId}", guildId);
     }
 }

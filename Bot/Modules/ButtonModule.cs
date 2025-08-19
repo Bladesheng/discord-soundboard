@@ -1,17 +1,26 @@
 using Bot.Data;
 using Bot.Voice;
+using Microsoft.Extensions.Logging;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ComponentInteractions;
 
 namespace Bot.Modules;
 
-public class ButtonModule(SoundService soundService, SoundboardDbContext dbContext)
-    : ComponentInteractionModule<ButtonInteractionContext>
+public class ButtonModule(
+    SoundService soundService,
+    SoundboardDbContext dbContext,
+    ILogger<ButtonModule> logger
+) : ComponentInteractionModule<ButtonInteractionContext>
 {
     [ComponentInteraction("soundButton")]
     public async Task Button(int soundId)
     {
+        logger.LogInformation("User {user} pressed button {button}.",
+            Context.User.Username,
+            soundId
+        );
+
         // Check if user is in a voice channel
         if (Context.Guild == null || !Context.Guild.VoiceStates.TryGetValue(Context.User.Id, out _))
         {
@@ -28,7 +37,10 @@ public class ButtonModule(SoundService soundService, SoundboardDbContext dbConte
 
         var sound = await dbContext.Sounds.FindAsync(soundId);
         if (sound == null)
-            throw new ArgumentException($"Sound with ID `{soundId}` not found.");
+        {
+            logger.LogError("Sound with ID {soundId} not found.", soundId);
+            return;
+        }
 
         await soundService.PlaySoundAsync(
             Context.Client,
@@ -36,7 +48,5 @@ public class ButtonModule(SoundService soundService, SoundboardDbContext dbConte
             Context.User.Id,
             sound.FilePath
         );
-
-        Console.WriteLine("button click done");
     }
 }

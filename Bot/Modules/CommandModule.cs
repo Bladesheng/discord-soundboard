@@ -1,13 +1,14 @@
 using Bot.Data;
 using Bot.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NetCord;
 using NetCord.Rest;
 using NetCord.Services.ApplicationCommands;
 
 namespace Bot.Modules;
 
-public class CommandModule(SoundboardDbContext dbContext)
+public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule> logger)
     : ApplicationCommandModule<ApplicationCommandContext>
 {
     [SlashCommand("new", "Creates a new sound effect.")]
@@ -99,13 +100,18 @@ public class CommandModule(SoundboardDbContext dbContext)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to download sound file: {ex}");
+            logger.LogError("Failed to download sound file: {ex}", ex);
 
             await ModifyResponseAsync(msg =>
                 msg.Content = "❌ Error: Failed to download the sound file. Please try again later."
             );
             return;
         }
+
+        logger.LogInformation("User {user} uploaded new sound {name}.",
+            Context.User.Username,
+            name
+        );
 
         await ModifyResponseAsync(msg =>
             msg.Content = "✅ File uploaded successfully. Type `/sound` to see it."
@@ -167,6 +173,12 @@ public class CommandModule(SoundboardDbContext dbContext)
         sound.Name = newName;
         await dbContext.SaveChangesAsync();
 
+        logger.LogInformation("User {user} renamed sound {oldName} to {newName}.",
+            Context.User.Username,
+            oldName,
+            newName
+        );
+
         await RespondEphemeralAsync(new InteractionMessageProperties
         {
             Content = $"✅ Sound `{oldName}` renamed to `{newName}` successfully."
@@ -202,6 +214,8 @@ public class CommandModule(SoundboardDbContext dbContext)
         dbContext.Sounds.Remove(sound);
         await dbContext.SaveChangesAsync();
 
+        logger.LogInformation("User {user} deleted sound {name}.", Context.User.Username, name);
+
         await RespondEphemeralAsync(new InteractionMessageProperties
         {
             Content = $"✅ Sound `{name}` deleted successfully."
@@ -212,6 +226,10 @@ public class CommandModule(SoundboardDbContext dbContext)
     [SlashCommand("sound", "Displays all soundboard buttons.")]
     public async Task Sound()
     {
+        logger.LogInformation("Displaying all soundboard buttons for user {user}.",
+            Context.User.Username
+        );
+
         await RespondAsync(
             InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
         );
@@ -243,6 +261,8 @@ public class CommandModule(SoundboardDbContext dbContext)
     [SlashCommand("download", "Download all the sound effects.")]
     public async Task Download()
     {
+        logger.LogInformation("User {user} requested all sound effects.", Context.User.Username);
+
         await RespondAsync(
             InteractionCallback.DeferredMessage(MessageFlags.Ephemeral)
         );
