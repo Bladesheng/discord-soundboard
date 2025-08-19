@@ -1,7 +1,13 @@
 # Discord Soundboard Bot
 
-Discord bot that plays custom sounds in voice channels.
-You can upload and fully manage the sounds through the bot's commands.
+Discord bot for playing custom sounds in voice channels.
+
+<img width="889" height="268" alt="image" src="https://github.com/user-attachments/assets/427e6e45-a307-4703-a2ba-0326ecf15059" />
+
+You can upload and fully manage the sounds through the bot's commands:
+
+<img width="237" height="285" alt="image" src="https://github.com/user-attachments/assets/519108f8-3859-4f47-8542-3baf382f0a02" />
+
 
 ## Installation
 
