@@ -22,17 +22,17 @@ public class SoundService(ILogger<SoundService> logger)
         string filePath
     )
     {
-        logger.LogInformation("Queuing sound {sound}.", filePath);
+        logger.LogInformation("Queuing sound {filePath}.", filePath);
 
         using var l =
             await _guildLocks.GetOrAdd(guild.Id, _ => new AsyncLock()).AcquireAsync();
 
-        logger.LogInformation("Playing sound {sound}.", filePath);
+        logger.LogInformation("Playing sound {filePath}.", filePath);
 
         // Check if user is in voice channel.
         if (!guild.VoiceStates.TryGetValue(userId, out var voiceState))
         {
-            logger.LogError("Could not get user {user} voice state.", userId);
+            logger.LogError("Could not get user {userId} voice state.", userId);
             return;
         }
 
@@ -50,7 +50,7 @@ public class SoundService(ILogger<SoundService> logger)
 
         await PlayAudioFileAsync(voiceConnection, filePath);
 
-        logger.LogInformation("Done playing sound {sound}", filePath);
+        logger.LogInformation("Done playing sound {userId}", filePath);
     }
 
     public async Task DisconnectAsync(GatewayClient client, ulong guildId)

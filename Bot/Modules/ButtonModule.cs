@@ -16,7 +16,7 @@ public class ButtonModule(
     [ComponentInteraction("soundButton")]
     public async Task Button(int soundId)
     {
-        logger.LogInformation("User {user} pressed button {button}.",
+        logger.LogInformation("User {Username} pressed button {soundId}.",
             Context.User.Username,
             soundId
         );

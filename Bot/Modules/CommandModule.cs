@@ -108,7 +108,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
             return;
         }
 
-        logger.LogInformation("User {user} uploaded new sound {name}.",
+        logger.LogInformation("User {Username} uploaded new sound {name}.",
             Context.User.Username,
             name
         );
@@ -173,7 +173,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         sound.Name = newName;
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("User {user} renamed sound {oldName} to {newName}.",
+        logger.LogInformation("User {Username} renamed sound {oldName} to {newName}.",
             Context.User.Username,
             oldName,
             newName
@@ -214,7 +214,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         dbContext.Sounds.Remove(sound);
         await dbContext.SaveChangesAsync();
 
-        logger.LogInformation("User {user} deleted sound {name}.", Context.User.Username, name);
+        logger.LogInformation("User {Username} deleted sound {name}.", Context.User.Username, name);
 
         await RespondEphemeralAsync(new InteractionMessageProperties
         {
