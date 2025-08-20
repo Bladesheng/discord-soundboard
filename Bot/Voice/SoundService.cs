@@ -43,7 +43,7 @@ public class SoundService(ILogger<SoundService> logger)
             return;
         }
 
-        await JoinChannel(client, guild.Id, channelId);
+        await JoinChannelAsync(client, guild.Id, channelId);
 
         if (!_voiceConnections.TryGetValue(guild.Id, out var voiceConnection))
             throw new InvalidOperationException("Failed to get voice connection for the server.");
@@ -53,8 +53,12 @@ public class SoundService(ILogger<SoundService> logger)
         logger.LogInformation("Done playing sound {sound}", filePath);
     }
 
+    public async Task DisconnectAsync(GatewayClient client, ulong guildId)
+    {
+        await client.UpdateVoiceStateAsync(new VoiceStateProperties(guildId, null));
+    }
 
-    private async Task JoinChannel(
+    private async Task JoinChannelAsync(
         GatewayClient client,
         ulong guildId,
         ulong channelId
