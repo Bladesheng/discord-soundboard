@@ -78,6 +78,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         }
 
 
+        string? filePath = null;
         try
         {
             using HttpClient httpClient = new();
@@ -86,7 +87,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
 
             var soundsDirectory = Path.Combine("/var", "lib", "DiscordSoundboard", "sounds");
             Directory.CreateDirectory(soundsDirectory);
-            var filePath = Path.Combine(soundsDirectory, $"{Guid.NewGuid()}_{sound.FileName}");
+            filePath = Path.Combine(soundsDirectory, $"{Guid.NewGuid()}_{sound.FileName}");
             await using FileStream fileStream = new(filePath, FileMode.Create);
             await response.Content.CopyToAsync(fileStream);
 
@@ -100,10 +101,13 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         }
         catch (Exception ex)
         {
-            logger.LogError("Failed to download sound file: {ex}", ex);
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            logger.LogError(ex, "Failed to save sound file {name}", name);
 
             await ModifyResponseAsync(msg =>
-                msg.Content = "❌ Error: Failed to download the sound file. Please try again later."
+                msg.Content = "❌ Error: Failed to save the sound file. Please try again later."
             );
             return;
         }
@@ -171,7 +175,26 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
 
 
         sound.Name = newName;
-        await dbContext.SaveChangesAsync();
+
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to update sound name {oldName} to {newName}",
+                oldName,
+                newName
+            );
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content =
+                    "❌ Error: Failed to rename the sound. Sound with the new name may already exist."
+            });
+            return;
+        }
 
         logger.LogInformation("User {Username} renamed sound {oldName} to {newName}.",
             Context.User.Username,
@@ -208,11 +231,24 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
             return;
         }
 
-        if (File.Exists(sound.FilePath))
-            File.Delete(sound.FilePath);
+        try
+        {
+            if (File.Exists(sound.FilePath))
+                File.Delete(sound.FilePath);
 
-        dbContext.Sounds.Remove(sound);
-        await dbContext.SaveChangesAsync();
+            dbContext.Sounds.Remove(sound);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete file {name}.", name);
+            await RespondEphemeralAsync(new InteractionMessageProperties
+            {
+                Content = "❌ Failed to delete sound. Please try again later."
+            });
+            return;
+        }
+
 
         logger.LogInformation("User {Username} deleted sound {name}.", Context.User.Username, name);
 
