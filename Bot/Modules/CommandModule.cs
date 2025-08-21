@@ -139,11 +139,9 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         // Discord allows only 80 characters inside a button.
         if (newName.Length > 80)
         {
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content =
-                    $"❌ Error: Sound name is too long: `{newName.Length}` characters. Maximum length `80` characters."
-            });
+            await RespondEphemeralAsync(
+                $"❌ Error: Sound name is too long: `{newName.Length}` characters. Maximum length `80` characters."
+            );
             return;
         }
 
@@ -153,10 +151,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
 
         if (sound == null)
         {
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content = $"❌ Error: Sound with name `{oldName}` not found."
-            });
+            await RespondEphemeralAsync($"❌ Error: Sound with name `{oldName}` not found.");
             return;
         }
 
@@ -166,10 +161,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
 
         if (soundWithNewName != null)
         {
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content = $"❌ Error: Sound with name `{newName}` already exists."
-            });
+            await RespondEphemeralAsync($"❌ Error: Sound with name `{newName}` already exists.");
             return;
         }
 
@@ -188,11 +180,9 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
                 oldName,
                 newName
             );
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content =
-                    "❌ Error: Failed to rename the sound. Sound with the new name may already exist."
-            });
+            await RespondEphemeralAsync(
+                "❌ Error: Failed to rename the sound. Sound with the new name may already exist."
+            );
             return;
         }
 
@@ -202,10 +192,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
             newName
         );
 
-        await RespondEphemeralAsync(new InteractionMessageProperties
-        {
-            Content = $"✅ Sound `{oldName}` renamed to `{newName}` successfully."
-        });
+        await RespondEphemeralAsync($"✅ Sound `{oldName}` renamed to `{newName}` successfully.");
     }
 
 
@@ -224,10 +211,7 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
 
         if (sound == null)
         {
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content = $"❌ Error: Sound with name `{name}` not found."
-            });
+            await RespondEphemeralAsync($"❌ Error: Sound with name `{name}` not found.");
             return;
         }
 
@@ -242,20 +226,14 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to delete file {name}.", name);
-            await RespondEphemeralAsync(new InteractionMessageProperties
-            {
-                Content = "❌ Failed to delete sound. Please try again later."
-            });
+            await RespondEphemeralAsync("❌ Failed to delete sound. Please try again later.");
             return;
         }
 
 
         logger.LogInformation("User {Username} deleted sound {name}.", Context.User.Username, name);
 
-        await RespondEphemeralAsync(new InteractionMessageProperties
-        {
-            Content = $"✅ Sound `{name}` deleted successfully."
-        });
+        await RespondEphemeralAsync($"✅ Sound `{name}` deleted successfully.");
     }
 
 
@@ -317,6 +295,16 @@ public class CommandModule(SoundboardDbContext dbContext, ILogger<CommandModule>
                 Flags = MessageFlags.Ephemeral,
                 Attachments = messageAttachments
             });
+    }
+
+
+    private async Task RespondEphemeralAsync(string content)
+    {
+        await RespondAsync(InteractionCallback.Message(new InteractionMessageProperties
+        {
+            Flags = MessageFlags.Ephemeral,
+            Content = content
+        }));
     }
 
 
